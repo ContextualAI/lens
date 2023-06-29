@@ -6,9 +6,7 @@ This is the official repository for the LENS (Large Language Models Enhanced to 
 
 ## Setup
 
-1. We reccomend that you get a machine with GPUs and CUDA.
-   A machine with a single GPU or even only a CPU works,
-   although for large datasets you should get several GPUs.
+1. We recommend that you get a machine with GPUs and CUDA. A machine with a single GPU or even a CPU works, although for large datasets you should get several GPUs.
 
 
 2.  Create a python 3.9 conda or virtual environment and then install this repo as a pip package with:
@@ -18,12 +16,12 @@ This is the official repository for the LENS (Large Language Models Enhanced to 
 
 ## Usage
 
-First, the system runs a series of highly descriptive vision modules on your own dataset of images. These modules provide a large set of natural language captions, tags, objects, and attributes for each image. These natural language descriptions are then provided to a large language model (LLM) so that it can solve a variety of tasks relating to the image. Despite the simplicity of our system, and the fact that it requires no finetuning, we demonstrate in our paper that it often performs better than other SOTA image-language models such as FLAMINGO, CLIP, and KOSMOS.
+First, the system runs a series of highly descriptive vision modules on your own dataset of images. These modules provide a large set of natural language captions, tags, objects, and attributes for each image. These natural language descriptions are then provided to a large language model (LLM) so that it can solve a variety of tasks relating to the image. Despite the simplicity of our system, and the fact that it requires no finetuning, we demonstrate in our paper that it often performs better than other SOTA image-language models such as Flamingo, CLIP, and Kosmos.
 
 
 ### Visual Descriptions
 
-To simply get visual descriptions from LENS to pass on to an LLM, follow:
+To simply get visual descriptions from LENS to pass on to an LLM, use the following code:
 
 ```python
 import requests
@@ -42,7 +40,7 @@ with torch.no_grad():
     prompts = output["prompts"]
 ```
 
-The generated prompts can be passed to the downstream LLM for the vision task that you want to solve. The `output` object also contains other useful information (tags, attributes, objects) that can be used to generate your custom prompts.
+The generated prompts can be passed to an LLM for solving a vision task. The `output` object also contains other useful information (tags, attributes, objects) that can be used to generate your custom prompts.
 
 ### Advanced Use Cases
 
