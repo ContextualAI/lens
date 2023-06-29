@@ -1,6 +1,6 @@
 # LENS🔍
 
-[[Blog]](https://contextual.ai/introducing-lens) [[Demo]](https://lens.contextual.ai/) [[Paper]](https://arxiv.org/abs/2306.16410) [[Colab]]()
+[[Blog]](https://contextual.ai/introducing-lens) [[Demo]](https://lens.contextual.ai/) [[Paper]](https://arxiv.org/abs/2306.16410) [[Colab]](https://colab.research.google.com/github/ContextualAI/lens/blob/main/notebooks/example_usage.ipynb)
 
 This is the official repository for the LENS (Large Language Models Enhanced to See) [paper](https://arxiv.org/abs/2306.16410). 
 
