@@ -77,13 +77,11 @@ output_ds = lens.hf_dataset_transform(ds, processor, return_global_caption = Fal
 ## Architecture
 
 ### LENS for open ended visual question answering
-![CVasNLP_open_ended_approach](https://github.com/ContextualAI/CVasNLP/assets/37418346/b3e13a70-e30f-42bd-9a17-506b79a2ce32)
-
-
+![lens_open_ended](https://github.com/ContextualAI/lens/assets/20826878/e2e9d993-3ae8-43d8-9152-0e73340afa41)
 
 
 ### LENS for image classification
-![CVasNLP_classification_approach](https://github.com/ContextualAI/CVasNLP/assets/37418346/d3909a16-339a-4194-88ea-d56bc8da536d)
+![lens_close_ended](https://github.com/ContextualAI/lens/assets/20826878/45f3ae43-e3e4-48fc-b424-1899445d5c6f)
 
 
 ## Coming Soon
