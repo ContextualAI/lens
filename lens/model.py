@@ -11,10 +11,10 @@ from transformers import (
     AutoProcessor,
     BlipForConditionalGeneration,
     CLIPModel,
-    CLIPProcessor,
+    CLIPProcessor
 )
 
-from .utils import (
+from utils import (
     create_dataloader,
     create_prompt_sample,
     create_sampler,
