@@ -403,13 +403,10 @@ class LensProcessor:
             return open_clip.create_model_and_transforms(model_name)[2]
 
     def __call__(self, images: Any, questions: str):
-        try:
-            clip_image = torch.stack([self.clip_processor(image) for image in images])
-        except:
-            clip_processed = self.clip_processor(images=images, return_tensors="pt")
-            clip_image = clip_processed["pixel_values"]
-            import pdb; pdb.set_trace()
-            clip_logits = clip_processed["logits"]
+        clip_outputs = self.clip_processor(images=images, return_tensors="pt")["pixel_values"]
+        clip_image = clip_outputs["pixel_values"]
+        import pdb; pdb.set_trace()
+        clip_logits = clip_outputs["logits"]
         outputs = self.blip_processor(
             images=images, text=["a picture of"] * len(images), return_tensors="pt"
         )
