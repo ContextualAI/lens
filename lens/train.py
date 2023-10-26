@@ -1,23 +1,36 @@
+'''
+https://dienhoa.github.io/dhblog/posts/finetune_clip.html
+https://huggingface.co/docs/transformers/training
+'''
+
+from model import Lens, LensDataset, LensProcessor
 import requests
 from lens import Lens, LensProcessor
 from PIL import Image
+from scipy.special import rel_entr
+from transformers import Trainer, CLIPProcessor, CLIPModel
 import torch
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import numpy as np
 
 img_url = 'https://images.unsplash.com/photo-1465056836041-7f43ac27dcb5?w=720'
 raw_image = Image.open(requests.get(img_url, stream=True).raw).convert('RGB')
 question = "What is the image about?"
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-lens = Lens()
-processor = LensProcessor()
-with torch.no_grad():
-    samples = processor([raw_image],[question])
-    output = lens(samples)
-print(output["prompts"])
+class LensTrainer():
+    def __init__(self):
+        self.model = Lens()
+        self.processor = LensProcessor()
 
-tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small",truncation_side = 'left',padding = True)
-LLM_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
+    def compute_loss(model, inputs):
+        total_loss = 0
+        lm_likelihood = torch.ones((5, 1))
+        for desc in ["tags", "attributes"]:
+            import pdb; pdb.set_trace()
 
-input_ids = tokenizer(samples["prompts"], return_tensors="pt").input_ids
-outputs = LLM_model.generate(input_ids)
-print(tokenizer.decode(outputs[0]))
+def main():
+    lensTrainer = LensTrainer()
+    model = lensTrainer.model
+    inputs = model.processor([raw_image],[question])
+    lensTrainer.compute_loss(model, inputs)
+    trainer = LensTrainer()
