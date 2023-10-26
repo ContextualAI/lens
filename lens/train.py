@@ -1,8 +1,3 @@
-'''
-https://dienhoa.github.io/dhblog/posts/finetune_clip.html
-https://huggingface.co/docs/transformers/training
-'''
-
 from model import Lens, LensDataset, LensProcessor
 import requests
 from PIL import Image
@@ -22,9 +17,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 lens_model = Lens()
 processor = LensProcessor()
-tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small",truncation_side = 'left',padding = True)
+tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small", truncation_side='left', padding=True)
 llm_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
-
 
 class LensTrainer(Trainer):
 
@@ -65,6 +59,12 @@ class LensTrainer(Trainer):
 
 def main():
     print(f"\nQuestion: {question} Groundtruth answer: {gt_answer}\n")
+    lensTrainer = LensTrainer(model=lens_model)
+    inputs = processor([raw_image],[question])
+    input_ids = tokenizer(inputs["prompts"], return_tensors="pt").input_ids
+    outputs = llm_model.generate(input_ids)
+    print(f"LENS generations: {outputs}\n")
+    lensTrainer.compute_loss(lens_model, inputs)
     #train_dataset = lens_model.hf_dataset_transform(
     #    ds=Dataset.from_dict({"image": [raw_image], "id": [0] }),
     #    processor=processor,
@@ -83,9 +83,6 @@ def main():
     #    train_dataset=train_dataset,
     #)
     #lensTrainer.train()
-    lensTrainer = LensTrainer(model=lens_model)
-    inputs = processor([raw_image],[question])
-    lensTrainer.compute_loss(lens_model, inputs)
 
 if __name__ == "__main__":
     main()
