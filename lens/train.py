@@ -7,11 +7,12 @@ from model import Lens, LensDataset, LensProcessor
 import requests
 from PIL import Image
 from scipy.special import rel_entr
-from transformers import Trainer, CLIPProcessor, CLIPModel, AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import Trainer, TrainingArguments, CLIPProcessor, CLIPModel, AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 import numpy as np
 from utils import create_prompt_sample
 import torch.nn.functional as F
+from datasets import Dataset, load_dataset
 
 img_url = 'https://images.unsplash.com/photo-1465056836041-7f43ac27dcb5?w=720'
 raw_image = Image.open(requests.get(img_url, stream=True).raw).convert('RGB')
@@ -19,25 +20,27 @@ question = "What is the image about?"
 gt_answer = "A pristine mountain range with a clear lake and sky"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+lens_model = Lens()
+processor = LensProcessor()
+tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small",truncation_side = 'left',padding = True)
+llm_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
+
+
 class LensTrainer(Trainer):
-    def __init__(self):
-        self.lens_model = Lens()
-        self.processor = LensProcessor()
-        self.tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small",truncation_side = 'left',padding = True)
-        self.llm_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
 
     def compute_llm_likelihood(self, samples):
         question, tags = samples["questions"][0], samples["tags"][0]
         #Encode prompts and groundtruth answers
+        print(f"Tags sampled: {tags})\n")
         prompts = [
             create_prompt_sample(samples, idx, mode="tag_only", question_prompt=question)
             for idx in range(len(tags))
         ]
         answers = [gt_answer for idx in range(len(tags))]
-        prompt_encodings = self.tokenizer(prompts, return_tensors="pt", padding=True)
-        answer_encodings = self.tokenizer(answers, return_tensors="pt", padding=True)
+        prompt_encodings = tokenizer(prompts, return_tensors="pt", padding=True)
+        answer_encodings = tokenizer(answers, return_tensors="pt", padding=True)
         #Get logits for groundtruth sequence when conditioned on each prompt
-        outputs = self.llm_model(
+        outputs = llm_model(
             input_ids=prompt_encodings["input_ids"],
             attention_mask=prompt_encodings["attention_mask"],
             labels=answer_encodings["input_ids"]
@@ -51,14 +54,38 @@ class LensTrainer(Trainer):
     def compute_loss(self, model, inputs):
         samples = model(inputs)
         tags_likelihood = samples["tags_scores"].squeeze().softmax(dim=0)
+        print(f"Tags likelihood: {tags_likelihood}\n")
         llm_likelihood = self.compute_llm_likelihood(samples)
-        kl_penalty = F.kl_div(torch.log(tags_likelihood), llm_likelihood)
+        print(f"LLM likelihood: {llm_likelihood}\n")
+        kl_penalty = F.kl_div(
+            torch.log(tags_likelihood), llm_likelihood, reduction="batchmean"
+        )
+        print(f"KL penalty: {kl_penalty}\n")
         return kl_penalty
 
 def main():
-    lensTrainer = LensTrainer()
-    inputs = lensTrainer.processor([raw_image],[question])
-    lensTrainer.compute_loss(lensTrainer.lens_model, inputs)
+    print(f"\nQuestion: {question} Groundtruth answer: {gt_answer}\n")
+    #train_dataset = lens_model.hf_dataset_transform(
+    #    ds=Dataset.from_dict({"image": [raw_image], "id": [0] }),
+    #    processor=processor,
+    #)
+    #ds = load_dataset("llm-lens/lens_sample_test", split="test")
+    #train_dataset = lens_model.hf_dataset_transform(
+    #    ds=ds, processor=processor
+    #)
+    #training_args = TrainingArguments(
+    #    output_dir="lens_train_checkpoints",
+    #    remove_unused_columns=False
+    #)
+    #lensTrainer = LensTrainer(
+    #    model=lens_model,
+    #    args=training_args,
+    #    train_dataset=train_dataset,
+    #)
+    #lensTrainer.train()
+    lensTrainer = LensTrainer(model=lens_model)
+    inputs = processor([raw_image],[question])
+    lensTrainer.compute_loss(lens_model, inputs)
 
 if __name__ == "__main__":
     main()
