@@ -30,7 +30,5 @@ class LensTrainer():
 
 def main():
     lensTrainer = LensTrainer()
-    model = lensTrainer.model
-    inputs = model.processor([raw_image],[question])
-    lensTrainer.compute_loss(model, inputs)
-    trainer = LensTrainer()
+    samples = lensTrainer.processor([raw_image],[question])
+    outputs = lensTrainer.model(samples)

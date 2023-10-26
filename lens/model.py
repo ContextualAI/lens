@@ -406,9 +406,10 @@ class LensProcessor:
         try:
             clip_image = torch.stack([self.clip_processor(image) for image in images])
         except:
-            clip_image = self.clip_processor(images=images, return_tensors="pt")[
-                "pixel_values"
-            ]
+            clip_processed = self.clip_processor(images=images, return_tensors="pt")
+            clip_image = clip_processed["pixel_values"]
+            import pdb; pdb.set_trace()
+            clip_logits = clip_processed["logits"]
         outputs = self.blip_processor(
             images=images, text=["a picture of"] * len(images), return_tensors="pt"
         )
@@ -416,6 +417,7 @@ class LensProcessor:
         blip_input_ids = outputs["input_ids"]
         return {
             "clip_image": clip_image,
+            "clip_logits": clip_logits,
             "blip_image": blip_image,
             "blip_input_ids": blip_input_ids,
             "questions": questions,
