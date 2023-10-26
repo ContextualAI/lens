@@ -184,6 +184,7 @@ class Lens(nn.Module):
                 top_k_tags = []
             tags.append(top_k_tags)
         samples[f"tags"] = tags
+        samples[f"tags_scores"] = top_scores
         return samples
 
     def forward_attributes(
@@ -403,10 +404,10 @@ class LensProcessor:
             return open_clip.create_model_and_transforms(model_name)[2]
 
     def __call__(self, images: Any, questions: str):
-        clip_outputs = self.clip_processor(images=images, return_tensors="pt")["pixel_values"]
-        clip_image = clip_outputs["pixel_values"]
-        import pdb; pdb.set_trace()
-        clip_logits = clip_outputs["logits"]
+        try:
+            clip_image = torch.stack([self.clip_processor(image) for image in images])
+        except:
+            clip_image = self.clip_processor(images=images, return_tensors="pt")["pixel_values"]
         outputs = self.blip_processor(
             images=images, text=["a picture of"] * len(images), return_tensors="pt"
         )
@@ -414,7 +415,6 @@ class LensProcessor:
         blip_input_ids = outputs["input_ids"]
         return {
             "clip_image": clip_image,
-            "clip_logits": clip_logits,
             "blip_image": blip_image,
             "blip_input_ids": blip_input_ids,
             "questions": questions,
