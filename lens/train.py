@@ -47,10 +47,6 @@ class LensTrainer():
 
     def compute_loss(self, model, inputs):
         samples = model(inputs)
-        #input_ids = tokenizer(samples["prompts"], return_tensors="pt", truncate=True).input_ids
-        #generations = llm_model.generate(input_ids)
-        #generations_decoded = tokenizer.decode(generations[0])
-        #print(f"LENS generations: {generations_decoded}\n")
         tags_likelihood = samples["top_scores"].squeeze().softmax(dim=0)
         llm_likelihood = self.compute_llm_likelihood(samples)
         kl_penalty = F.kl_div(
@@ -66,36 +62,12 @@ def main():
     lensTrainer = LensTrainer()
     torch.autograd.set_detect_anomaly(True)
     for epoch in range(10):
-        print(f"Epoch: {epoch}")
         optimizer.zero_grad()
         inputs = processor([raw_image], [question])
         loss = lensTrainer.compute_loss(lens_model, inputs)
         wandb.log({"loss": loss})
         loss.backward()
         optimizer.step()
-    print(losses)
-
-    #lensTrainer = LensTrainer(model=lens_model)
-    #inputs = processor([raw_image], [question])
-    #lensTrainer.compute_loss(lens_model, inputs)
-    #train_dataset = lens_model.hf_dataset_transform(
-    #    ds=Dataset.from_dict({"image": [raw_image], "id": [0] }),
-    #    processor=processor,
-    #)
-    #ds = load_dataset("llm-lens/lens_sample_test", split="test")
-    #train_dataset = lens_model.hf_dataset_transform(
-    #    ds=ds, processor=processor
-    #)
-    #training_args = TrainingArguments(
-    #    output_dir="lens_train_checkpoints",
-    #    remove_unused_columns=False
-    #)
-    #lensTrainer = LensTrainer(
-    #    model=lens_model,
-    #    args=training_args,
-    #    train_dataset=train_dataset,
-    #)
-    #lensTrainer.train()
 
 if __name__ == "__main__":
     main()
