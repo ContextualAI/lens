@@ -30,6 +30,8 @@ def create_sampler(dataset, distributed=False):
 
 
 def create_dataloader(dataset, sampler, batch_size=8, num_workers=0):
+    def collate_fn(data):
+        return data[0]
     loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
@@ -38,6 +40,7 @@ def create_dataloader(dataset, sampler, batch_size=8, num_workers=0):
         sampler=sampler,
         shuffle=False,
         drop_last=False,
+        collate_fn=collate_fn
     )
     return loader
 

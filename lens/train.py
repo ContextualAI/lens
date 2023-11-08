@@ -20,7 +20,7 @@ processor = LensProcessor()
 tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small", truncation_side='left', padding=True)
 llm_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
 
-class LensTrainer(Trainer):
+class LensTrainer():
 
     def compute_llm_likelihood(self, samples):
         question, tags = samples["questions"][0], samples["tags"][0]
@@ -47,24 +47,40 @@ class LensTrainer(Trainer):
 
     def compute_loss(self, model, inputs):
         samples = model(inputs)
-        tags_likelihood = samples["tags_scores"].squeeze().softmax(dim=0)
-        print(f"Tags likelihood: {tags_likelihood}\n")
+        input_ids = tokenizer(samples["prompts"], return_tensors="pt").input_ids
+        generations = llm_model.generate(input_ids)
+        generations_decoded = tokenizer.decode(generations[0], max_length=20)
+        #print(f"LENS generations: {generations_decoded}\n")
+        tags_likelihood = samples["text_scores"].squeeze().softmax(dim=0)
+        print(f"Tags likelihood: {tags_likelihood}")
         llm_likelihood = self.compute_llm_likelihood(samples)
-        print(f"LLM likelihood: {llm_likelihood}\n")
+        import pdb; pdb.set_trace()
+        #print(f"LLM likelihood: {llm_likelihood}\n")
         kl_penalty = F.kl_div(
             torch.log(tags_likelihood), llm_likelihood, reduction="batchmean"
         )
-        print(f"KL penalty: {kl_penalty}\n")
+        #print(f"KL penalty: {kl_penalty}\n")
         return kl_penalty
 
 def main():
     print(f"\nQuestion: {question} Groundtruth answer: {gt_answer}\n")
+    optimizer = torch.optim.Adam(lens_model.parameters(), lr=0.01)
     lensTrainer = LensTrainer(model=lens_model)
-    inputs = processor([raw_image],[question])
-    input_ids = tokenizer(inputs["prompts"], return_tensors="pt").input_ids
-    outputs = llm_model.generate(input_ids)
-    print(f"LENS generations: {outputs}\n")
-    lensTrainer.compute_loss(lens_model, inputs)
+    losses = []
+    torch.autograd.set_detect_anomaly(True)
+    for epoch in range(10):
+        print(f"Epoch: {epoch}")
+        optimizer.zero_grad()
+        inputs = processor([raw_image], [question])
+        loss = lensTrainer.compute_loss(lens_model, inputs)
+        losses.append(loss)
+        loss.backward()
+        optimizer.step()
+    print(losses)
+
+    #lensTrainer = LensTrainer(model=lens_model)
+    #inputs = processor([raw_image], [question])
+    #lensTrainer.compute_loss(lens_model, inputs)
     #train_dataset = lens_model.hf_dataset_transform(
     #    ds=Dataset.from_dict({"image": [raw_image], "id": [0] }),
     #    processor=processor,

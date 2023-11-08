@@ -173,9 +173,9 @@ class Lens(nn.Module):
             image_features = self.clip_model.get_image_features(
                 pixel_values=samples["clip_image"]
             )
-        image_features /= image_features.norm(dim=-1, keepdim=True)
-        text_scores = image_features @ self.tags_weights
-        top_scores, top_indexes = text_scores.float().cpu().topk(k=num_tags, dim=-1)
+        image_features_norm = image_features / image_features.norm(dim=-1, keepdim=True)
+        text_scores = (image_features_norm @ self.tags_weights).float().cpu()
+        top_scores, top_indexes = text_scores.topk(k=num_tags, dim=-1)
         for scores, indexes in zip(top_scores, top_indexes):
             filter_indexes = indexes[scores >= contrastive_th]
             if len(filter_indexes) > 0:
@@ -184,7 +184,8 @@ class Lens(nn.Module):
                 top_k_tags = []
             tags.append(top_k_tags)
         samples[f"tags"] = tags
-        samples[f"tags_scores"] = top_scores
+        samples[f"text_scores"] = text_scores
+        samples[f"top_scores"] = top_scores
         return samples
 
     def forward_attributes(
@@ -200,8 +201,8 @@ class Lens(nn.Module):
             image_features = self.clip_model.get_image_features(
                 pixel_values=samples["clip_image"]
             )
-        image_features /= image_features.norm(dim=-1, keepdim=True)
-        text_scores = image_features @ self.attributes_weights
+        image_features_norm = image_features / image_features.norm(dim=-1, keepdim=True)
+        text_scores = image_features_norm @ self.attributes_weights
         top_scores, top_indexes = (
             text_scores.float().cpu().topk(k=num_attributes, dim=-1)
         )
