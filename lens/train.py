@@ -25,7 +25,6 @@ class LensTrainer():
     def compute_llm_likelihood(self, samples):
         question, tags = samples["questions"][0], samples["tags"][0]
         #Encode prompts and groundtruth answers
-        print(f"Tags sampled: {tags})\n")
         prompts = [
             create_prompt_sample(samples, idx, mode="tag_only", question_prompt=question)
             for idx in range(len(tags))
@@ -47,25 +46,24 @@ class LensTrainer():
 
     def compute_loss(self, model, inputs):
         samples = model(inputs)
-        input_ids = tokenizer(samples["prompts"], return_tensors="pt").input_ids
-        generations = llm_model.generate(input_ids)
-        generations_decoded = tokenizer.decode(generations[0], max_length=20)
+        #input_ids = tokenizer(samples["prompts"], return_tensors="pt", truncate=True).input_ids
+        #generations = llm_model.generate(input_ids)
+        #generations_decoded = tokenizer.decode(generations[0])
         #print(f"LENS generations: {generations_decoded}\n")
         tags_likelihood = samples["top_scores"].squeeze().softmax(dim=0)
         print(f"Tags likelihood: {tags_likelihood}")
         llm_likelihood = self.compute_llm_likelihood(samples)
-        import pdb; pdb.set_trace()
-        #print(f"LLM likelihood: {llm_likelihood}\n")
+        print(f"LLM likelihood: {llm_likelihood}\n")
         kl_penalty = F.kl_div(
             torch.log(tags_likelihood), llm_likelihood, reduction="batchmean"
         )
-        #print(f"KL penalty: {kl_penalty}\n")
+        print(f"KL penalty: {kl_penalty}\n")
         return kl_penalty
 
 def main():
     print(f"\nQuestion: {question} Groundtruth answer: {gt_answer}\n")
     optimizer = torch.optim.Adam(lens_model.parameters(), lr=0.01)
-    lensTrainer = LensTrainer(model=lens_model)
+    lensTrainer = LensTrainer()
     losses = []
     torch.autograd.set_detect_anomaly(True)
     for epoch in range(10):

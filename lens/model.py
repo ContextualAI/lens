@@ -117,7 +117,7 @@ class Lens(nn.Module):
     def __call__(
         self,
         samples: dict,
-        num_tags: int = None,
+        num_tags: int = 1000,
         num_attributes: int = 5,
         contrastive_th: float = 0.2,
         num_beams: int = 5,  # For beam search
@@ -161,7 +161,7 @@ class Lens(nn.Module):
         return samples
 
     def forward_tags(
-        self, samples: dict, num_tags: int = None, contrastive_th: float = 0.2
+        self, samples: dict, num_tags: int = 1000, contrastive_th: float = 0.2
     ):
         # Get Image Features
         tags = []
@@ -176,7 +176,7 @@ class Lens(nn.Module):
         image_features_norm = image_features / image_features.norm(dim=-1, keepdim=True)
         text_scores = (image_features_norm @ self.tags_weights).float().cpu()
         top_scores, top_indexes = text_scores.topk(
-            k=num_tags if num_tags else len(text_scores), dim=-1
+            k=num_tags if num_tags else len(text_scores.squeeze()), dim=-1
         )
         for scores, indexes in zip(top_scores, top_indexes):
             filter_indexes = indexes[scores >= contrastive_th]
