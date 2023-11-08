@@ -8,6 +8,7 @@ import numpy as np
 from utils import create_prompt_sample
 import torch.nn.functional as F
 from datasets import Dataset, load_dataset
+import wandb
 
 img_url = 'https://images.unsplash.com/photo-1465056836041-7f43ac27dcb5?w=720'
 raw_image = Image.open(requests.get(img_url, stream=True).raw).convert('RGB')
@@ -51,27 +52,25 @@ class LensTrainer():
         #generations_decoded = tokenizer.decode(generations[0])
         #print(f"LENS generations: {generations_decoded}\n")
         tags_likelihood = samples["top_scores"].squeeze().softmax(dim=0)
-        print(f"Tags likelihood: {tags_likelihood}")
         llm_likelihood = self.compute_llm_likelihood(samples)
-        print(f"LLM likelihood: {llm_likelihood}\n")
         kl_penalty = F.kl_div(
             torch.log(tags_likelihood), llm_likelihood, reduction="batchmean"
         )
-        print(f"KL penalty: {kl_penalty}\n")
+        wandb.log({"kl_penalty": kl_penalty})
         return kl_penalty
 
 def main():
     print(f"\nQuestion: {question} Groundtruth answer: {gt_answer}\n")
+    wandb.init(project="lens-training-1-example")
     optimizer = torch.optim.Adam(lens_model.parameters(), lr=0.01)
     lensTrainer = LensTrainer()
-    losses = []
     torch.autograd.set_detect_anomaly(True)
     for epoch in range(10):
         print(f"Epoch: {epoch}")
         optimizer.zero_grad()
         inputs = processor([raw_image], [question])
         loss = lensTrainer.compute_loss(lens_model, inputs)
-        losses.append(loss)
+        wandb.log({"loss": loss})
         loss.backward()
         optimizer.step()
     print(losses)
