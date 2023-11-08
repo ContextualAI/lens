@@ -51,7 +51,7 @@ class LensTrainer():
         generations = llm_model.generate(input_ids)
         generations_decoded = tokenizer.decode(generations[0], max_length=20)
         #print(f"LENS generations: {generations_decoded}\n")
-        tags_likelihood = samples["text_scores"].squeeze().softmax(dim=0)
+        tags_likelihood = samples["top_scores"].squeeze().softmax(dim=0)
         print(f"Tags likelihood: {tags_likelihood}")
         llm_likelihood = self.compute_llm_likelihood(samples)
         import pdb; pdb.set_trace()
