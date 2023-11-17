@@ -7,6 +7,7 @@ import torch
 import numpy as np
 from utils import create_prompt_sample
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 from datasets import Dataset, load_dataset
 import wandb
 
@@ -57,12 +58,16 @@ class LensTrainer():
 
 def main():
     print(f"\nQuestion: {question} Groundtruth answer: {gt_answer}\n")
-    wandb.init(project="lens-training-1-example")
+    wandb.init(project="lens-training-lens-dataset")
+    ds = load_dataset("llm-lens/lens_sample_test", split="test")   
+    output_ds = lens_model.hf_dataset_transform(ds, processor, return_global_caption=False)
+    dataloader = DataLoader(output_ds, batch_size=4)
     optimizer = torch.optim.Adam(lens_model.parameters(), lr=0.01)
     lensTrainer = LensTrainer()
     torch.autograd.set_detect_anomaly(True)
-    for epoch in range(10):
+    for batch in dataloader:
         optimizer.zero_grad()
+        import pdb; pdb.set_trace()
         inputs = processor([raw_image], [question])
         loss = lensTrainer.compute_loss(lens_model, inputs)
         wandb.log({"loss": loss})
