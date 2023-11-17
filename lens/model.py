@@ -131,6 +131,7 @@ class Lens(nn.Module):
         return_intensive_captions: bool = True,
         return_complete_prompt: bool = True,
     ):
+
         if return_tags:
             samples = self.forward_tags(
                 samples, num_tags=num_tags, contrastive_th=contrastive_th
@@ -156,7 +157,7 @@ class Lens(nn.Module):
         #     )
 
         if return_complete_prompt:
-            samples = self.create_prompt_from_samples(samples)
+            samples = self.create_prompt_from_samples(samples, mode="tags_only")
 
         return samples
 

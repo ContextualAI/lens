@@ -114,7 +114,14 @@ def create_prompt_sample(
         prompt += question
         prompt += "\nShort Answer:"
 
-    elif mode == "tag_only":
+    elif mode == "tags_only":
+        prompt += "Tag: "
+        prompt += ",".join(samples[tags_col][idx])
+        prompt += "\nQuestion:"
+        prompt += question
+        prompt += "\nShort Answer:"
+
+    elif mode == "one_tag_only":
         prompt += "Tag: "
         prompt += samples[tags_col][0][idx]
         prompt += "\nQuestion:"
