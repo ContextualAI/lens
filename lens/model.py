@@ -44,28 +44,28 @@ class Lens(nn.Module):
         # Load Base models
         self.device = device
         self.clip_name = clip_name
-        self.blip_name = blip_name
+        # self.blip_name = blip_name
         if self.clip_name is not None:
             self.clip_model = self.load_clip_model(self.clip_name, self.device)
             # Load weights
-            huggingface_hub.hf_hub_download(
-                repo_id="llm-lens/attributes",
-                filename=attributes_weights,
-                local_dir=str(Path(Path(__file__).resolve().parent) / "weights"),
-            )
+            # huggingface_hub.hf_hub_download(
+            #     repo_id="llm-lens/attributes",
+            #     filename=attributes_weights,
+            #     local_dir=str(Path(Path(__file__).resolve().parent) / "weights"),
+            # )
             huggingface_hub.hf_hub_download(
                 repo_id="llm-lens/tags",
                 filename=tags_weights,
                 local_dir=str(Path(Path(__file__).resolve().parent) / "weights"),
             )
 
-            self.attributes_weights = torch.load(
-                str(
-                    Path(Path(__file__).resolve().parent)
-                    / f"weights/{attributes_weights}"
-                ),
-                map_location=self.device,
-            ).float()
+            # self.attributes_weights = torch.load(
+            #     str(
+            #         Path(Path(__file__).resolve().parent)
+            #         / f"weights/{attributes_weights}"
+            #     ),
+            #     map_location=self.device,
+            # ).float()
             self.tags_weights = torch.load(
                 str(Path(Path(__file__).resolve().parent) / f"weights/{tags_weights}"),
                 map_location=self.device,
@@ -74,37 +74,37 @@ class Lens(nn.Module):
             self.vocab_tags = load_dataset(vocab_tags, split=split_tags)[
                 "prompt_descriptions"
             ]
-            self.vocab_attributes = flatten(
-                load_dataset(vocab_attributes, split=split_attributes)[
-                    "prompt_descriptions"
-                ]
-            )
+            # self.vocab_attributes = flatten(
+            #     load_dataset(vocab_attributes, split=split_attributes)[
+            #         "prompt_descriptions"
+            #     ]
+            # )
 
-        if self.blip_name is not None:
-            self.blip_model = self.load_caption_model(
-                self.blip_name, load_8bit, self.device
-            )
-            self.blip_processor = AutoProcessor.from_pretrained(self.blip_name)
+        # if self.blip_name is not None:
+        #     self.blip_model = self.load_caption_model(
+        #         self.blip_name, load_8bit, self.device
+        #     )
+        #     self.blip_processor = AutoProcessor.from_pretrained(self.blip_name)
 
-    def load_caption_model(
-        self, model_name: str, load_8bit: bool, device: torch.device
-    ):
-        if load_8bit:
-            model = BlipForConditionalGeneration.from_pretrained(
-                model_name,
-                torch_dtype=torch.float32 if device == "cpu" else torch.float16,
-                device_map={"": device},
-                load_in_8bit=True,
-            )
-        else:
-            model = BlipForConditionalGeneration.from_pretrained(
-                model_name,
-                torch_dtype=torch.float32 if device == "cpu" else torch.float16,
-            )
-        model = model.eval()
-        model = model.to(device)
+    # def load_caption_model(
+    #     self, model_name: str, load_8bit: bool, device: torch.device
+    # ):
+    #     if load_8bit:
+    #         model = BlipForConditionalGeneration.from_pretrained(
+    #             model_name,
+    #             torch_dtype=torch.float32 if device == "cpu" else torch.float16,
+    #             device_map={"": device},
+    #             load_in_8bit=True,
+    #         )
+    #     else:
+    #         model = BlipForConditionalGeneration.from_pretrained(
+    #             model_name,
+    #             torch_dtype=torch.float32 if device == "cpu" else torch.float16,
+    #         )
+    #     model = model.eval()
+    #     model = model.to(device)
 
-        return model
+    #     return model
 
     def load_clip_model(self, model_name: str, device: torch.device):
         if "openai" in model_name:
@@ -135,25 +135,25 @@ class Lens(nn.Module):
             samples = self.forward_tags(
                 samples, num_tags=num_tags, contrastive_th=contrastive_th
             )
-        if return_attributes:
-            samples = self.forward_attributes(
-                samples, num_attributes=num_attributes, contrastive_th=contrastive_th
-            )
-        if return_global_caption:
-            samples = self.forward_caption(
-                samples,
-                num_beams=num_beams,
-                max_length=max_length,
-                min_length=min_length,
-            )
-        if return_intensive_captions:
-            samples = self.forward_intensive_caption(
-                samples,
-                max_length=max_length,
-                min_length=min_length,
-                top_k=top_k,
-                num_captions=num_captions,
-            )
+        # if return_attributes:
+        #     samples = self.forward_attributes(
+        #         samples, num_attributes=num_attributes, contrastive_th=contrastive_th
+        #     )
+        # if return_global_caption:
+        #     samples = self.forward_caption(
+        #         samples,
+        #         num_beams=num_beams,
+        #         max_length=max_length,
+        #         min_length=min_length,
+        #     )
+        # if return_intensive_captions:
+        #     samples = self.forward_intensive_caption(
+        #         samples,
+        #         max_length=max_length,
+        #         min_length=min_length,
+        #         top_k=top_k,
+        #         num_captions=num_captions,
+        #     )
 
         if return_complete_prompt:
             samples = self.create_prompt_from_samples(samples)
@@ -189,97 +189,97 @@ class Lens(nn.Module):
         samples[f"top_scores"] = top_scores
         return samples
 
-    def forward_attributes(
-        self, samples: dict, num_attributes: int = 5, contrastive_th: float = 0.2
-    ):
-        # Get Image Features
-        attributes = []
-        try:
-            image_features = self.clip_model.encode_image(
-                samples["clip_image"].to(self.device)
-            )
-        except:
-            image_features = self.clip_model.get_image_features(
-                pixel_values=samples["clip_image"]
-            )
-        image_features_norm = image_features / image_features.norm(dim=-1, keepdim=True)
-        text_scores = image_features_norm @ self.attributes_weights
-        top_scores, top_indexes = (
-            text_scores.float().cpu().topk(k=num_attributes, dim=-1)
-        )
-        for scores, indexes in zip(top_scores, top_indexes):
-            filter_indexes = indexes[scores >= contrastive_th]
-            if len(filter_indexes) > 0:
-                top_k_tags = [self.vocab_attributes[index] for index in filter_indexes]
-            else:
-                top_k_tags = []
-            attributes.append(top_k_tags)
-        samples[f"attributes"] = attributes
-        return samples
+    # def forward_attributes(
+    #     self, samples: dict, num_attributes: int = 5, contrastive_th: float = 0.2
+    # ):
+    #     # Get Image Features
+    #     attributes = []
+    #     try:
+    #         image_features = self.clip_model.encode_image(
+    #             samples["clip_image"].to(self.device)
+    #         )
+    #     except:
+    #         image_features = self.clip_model.get_image_features(
+    #             pixel_values=samples["clip_image"]
+    #         )
+    #     image_features_norm = image_features / image_features.norm(dim=-1, keepdim=True)
+    #     text_scores = image_features_norm @ self.attributes_weights
+    #     top_scores, top_indexes = (
+    #         text_scores.float().cpu().topk(k=num_attributes, dim=-1)
+    #     )
+    #     for scores, indexes in zip(top_scores, top_indexes):
+    #         filter_indexes = indexes[scores >= contrastive_th]
+    #         if len(filter_indexes) > 0:
+    #             top_k_tags = [self.vocab_attributes[index] for index in filter_indexes]
+    #         else:
+    #             top_k_tags = []
+    #         attributes.append(top_k_tags)
+    #     samples[f"attributes"] = attributes
+    #     return samples
 
-    def forward_caption(
-        self,
-        samples: dict,
-        num_beams: int = 5,
-        max_length: int = 30,
-        min_length: int = 10,
-    ):
-        # Beam search
-        captions_list = []
-        pixel_values = samples["blip_image"].to(self.device, self.blip_model.dtype)
-        input_ids = samples["blip_input_ids"].to(self.device)
-        captions_ids = self.blip_model.generate(
-            pixel_values=pixel_values,
-            input_ids=input_ids,
-            do_sample=False,
-            num_beams=num_beams,
-            top_p=1,
-            max_length=max_length,
-            min_length=min_length,
-        )
+    # def forward_caption(
+    #     self,
+    #     samples: dict,
+    #     num_beams: int = 5,
+    #     max_length: int = 30,
+    #     min_length: int = 10,
+    # ):
+    #     # Beam search
+    #     captions_list = []
+    #     pixel_values = samples["blip_image"].to(self.device, self.blip_model.dtype)
+    #     input_ids = samples["blip_input_ids"].to(self.device)
+    #     captions_ids = self.blip_model.generate(
+    #         pixel_values=pixel_values,
+    #         input_ids=input_ids,
+    #         do_sample=False,
+    #         num_beams=num_beams,
+    #         top_p=1,
+    #         max_length=max_length,
+    #         min_length=min_length,
+    #     )
 
-        captions = self.blip_processor.batch_decode(
-            captions_ids, skip_special_tokens=True
-        )
+    #     captions = self.blip_processor.batch_decode(
+    #         captions_ids, skip_special_tokens=True
+    #     )
 
-        for caption in captions:
-            captions_list.append(caption[12:].strip())
+    #     for caption in captions:
+    #         captions_list.append(caption[12:].strip())
 
-        samples["caption"] = captions_list
-        return samples
+    #     samples["caption"] = captions_list
+    #     return samples
 
-    def forward_intensive_caption(
-        self,
-        samples: dict,
-        max_length: int = 30,
-        min_length: int = 10,
-        top_k: int = 50,
-        num_captions: int = 10,
-    ):
-        pixel_values = samples["blip_image"].to(self.device, self.blip_model.dtype)
-        input_ids = samples["blip_input_ids"].to(self.device)
-        caption_ids = self.blip_model.generate(
-            pixel_values=pixel_values,
-            input_ids=input_ids,
-            max_length=max_length,
-            min_length=min_length,
-            do_sample=True,
-            top_p=1,
-            top_k=top_k,
-            repetition_penalty=1,
-            num_return_sequences=num_captions,
-        )
+    # def forward_intensive_caption(
+    #     self,
+    #     samples: dict,
+    #     max_length: int = 30,
+    #     min_length: int = 10,
+    #     top_k: int = 50,
+    #     num_captions: int = 10,
+    # ):
+    #     pixel_values = samples["blip_image"].to(self.device, self.blip_model.dtype)
+    #     input_ids = samples["blip_input_ids"].to(self.device)
+    #     caption_ids = self.blip_model.generate(
+    #         pixel_values=pixel_values,
+    #         input_ids=input_ids,
+    #         max_length=max_length,
+    #         min_length=min_length,
+    #         do_sample=True,
+    #         top_p=1,
+    #         top_k=top_k,
+    #         repetition_penalty=1,
+    #         num_return_sequences=num_captions,
+    #     )
 
-        captions_text = self.blip_processor.batch_decode(
-            caption_ids, skip_special_tokens=True
-        )
-        captions_text = [caption[12:].strip() for caption in captions_text]
-        captions_text = [
-            captions_text[i : i + num_captions]
-            for i in range(0, len(captions_text), num_captions)
-        ]
-        samples["intensive_captions"] = captions_text
-        return samples
+    #     captions_text = self.blip_processor.batch_decode(
+    #         caption_ids, skip_special_tokens=True
+    #     )
+    #     captions_text = [caption[12:].strip() for caption in captions_text]
+    #     captions_text = [
+    #         captions_text[i : i + num_captions]
+    #         for i in range(0, len(captions_text), num_captions)
+    #     ]
+    #     samples["intensive_captions"] = captions_text
+    #     return samples
 
     # This function could be more efficient
     def create_prompt_from_samples(
@@ -348,7 +348,7 @@ class Lens(nn.Module):
                     key
                     for key in batch.keys()
                     if key
-                    in ["id", "tags", "attributes", "caption", "intensive_captions"]
+                    in ["id", "tags"]#, "attributes", "caption", "intensive_captions"]
                 ]
                 # print(f"keys: {keys}")
                 for tuples in zip(*[batch[key] for key in keys]):
@@ -369,9 +369,9 @@ class Lens(nn.Module):
             def add_info(example):
                 for component in [
                     "tags",
-                    "attributes",
-                    "caption",
-                    "intensive_captions",
+                    # "attributes",
+                    # "caption",
+                    # "intensive_captions",
                 ]:
                     try:
                         example[component] = dict_[example["id"]][component]
@@ -396,7 +396,7 @@ class LensProcessor:
         blip_name: str = "Salesforce/blip-image-captioning-large",
     ):
         self.clip_processor = self.load_clip_transform(clip_name)
-        self.blip_processor = AutoProcessor.from_pretrained(blip_name)
+        # self.blip_processor = AutoProcessor.from_pretrained(blip_name)
 
     def load_clip_transform(self, model_name: str):
         if "openai" in model_name:
@@ -410,15 +410,15 @@ class LensProcessor:
             clip_image = torch.stack([self.clip_processor(image) for image in images])
         except:
             clip_image = self.clip_processor(images=images, return_tensors="pt")["pixel_values"]
-        outputs = self.blip_processor(
-            images=images, text=["a picture of"] * len(images), return_tensors="pt"
-        )
-        blip_image = outputs["pixel_values"]
-        blip_input_ids = outputs["input_ids"]
+        # outputs = self.blip_processor(
+        #     images=images, text=["a picture of"] * len(images), return_tensors="pt"
+        # )
+        # blip_image = outputs["pixel_values"]
+        # blip_input_ids = outputs["input_ids"]
         return {
             "clip_image": clip_image,
-            "blip_image": blip_image,
-            "blip_input_ids": blip_input_ids,
+            # "blip_image": blip_image,
+            # "blip_input_ids": blip_input_ids,
             "questions": questions,
         }
 
@@ -449,8 +449,8 @@ class LensDataset:
         return {
             "id": torch.tensor(id, dtype=torch.int32),
             "clip_image": outputs["clip_image"].squeeze(0),
-            "blip_image": outputs["blip_image"].squeeze(0),
-            "blip_input_ids": outputs["blip_input_ids"].squeeze(0),
+            # "blip_image": outputs["blip_image"].squeeze(0),
+            # "blip_input_ids": outputs["blip_input_ids"].squeeze(0),
             "questions": outputs["questions"],
         }
 
