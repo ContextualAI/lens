@@ -58,14 +58,16 @@ def main():
     dataloader = create_dataloader(ds, sampler, batch_size=1)
     optimizer = torch.optim.Adam(lens_model.parameters(), lr=1e-5)
     torch.autograd.set_detect_anomaly(True)
-    for batch in dataloader:
-        optimizer.zero_grad()
-        inputs = processor([batch['image']], [question])
-        samples = lens_model(inputs)
-        loss = compute_loss(samples, batch['caption'])
-        wandb.log({"loss": loss})
-        loss.backward()
-        optimizer.step()
+    num_epochs = 100
+    for epoch in range(num_epochs):
+        for batch in dataloader:
+            optimizer.zero_grad()
+            inputs = processor([batch['image']], [question])
+            samples = lens_model(inputs)
+            loss = compute_loss(samples, batch['caption'])
+            wandb.log({"loss": loss})
+            loss.backward()
+            optimizer.step()
 
 if __name__ == "__main__":
     main()
