@@ -50,24 +50,23 @@ def compute_loss(samples, labels):
     wandb.log({"kl_penalty": kl_penalty})
     return kl_penalty
 
-def main():
+def train(num_epochs=100, lr=1e-5, batch_size=1):
     wandb.init(project="lens-training-coco-dataset")
     question = "What is the image about?"
     ds = load_dataset("RIW/small-coco", split="train")
     sampler = create_sampler(ds, distributed=False)
-    dataloader = create_dataloader(ds, sampler, batch_size=1)
-    optimizer = torch.optim.Adam(lens_model.parameters(), lr=1e-5)
+    dataloader = create_dataloader(ds, sampler, batch_size=batch_size)
+    optimizer = torch.optim.Adam(lens_model.parameters(), lr=lr)
+    batch = next(dataloader)
     torch.autograd.set_detect_anomaly(True)
-    num_epochs = 100
     for epoch in range(num_epochs):
-        for batch in dataloader:
-            optimizer.zero_grad()
-            inputs = processor([batch['image']], [question])
-            samples = lens_model(inputs)
-            loss = compute_loss(samples, batch['caption'])
-            wandb.log({"loss": loss})
-            loss.backward()
-            optimizer.step()
+        optimizer.zero_grad()
+        inputs = processor([batch['image']], [question])
+        samples = lens_model(inputs)
+        loss = compute_loss(samples, batch['caption'])
+        wandb.log({"loss": loss})
+        loss.backward()
+        optimizer.step()
 
 if __name__ == "__main__":
-    main()
+    train()
