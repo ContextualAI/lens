@@ -18,12 +18,12 @@ tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small", truncation_sid
 llm_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
 
 def compute_llm_likelihood(samples, labels):
-    tags = samples["tags"][0]
+    tags, question = samples["tags"][0], samples["questions"][0]
     #Encode prompts and groundtruth answers
     all_prompts = [
         create_prompt_sample(
             samples, idx, mode="one_tag_only", 
-            question_prompt=samples["questions"][idx]
+            question_prompt=question
         ) for idx in range(len(tags))
     ]
     all_labels = [ labels for idx in range(len(tags)) ]
