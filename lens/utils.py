@@ -31,7 +31,10 @@ def create_sampler(dataset, distributed=False):
 
 def create_dataloader(dataset, sampler, batch_size=8, num_workers=0):
     def collate_fn(data):
-        return data[0]
+        return {
+            'image': [d['image'] for d in data],
+            'caption': [d['caption'] for d in data]
+        }
     loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,

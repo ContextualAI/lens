@@ -18,15 +18,19 @@ tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small", truncation_sid
 llm_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
 
 def compute_llm_likelihood(samples, labels):
-    tags, question = samples["tags"][0], samples["questions"][0]
+    tags, questions = samples["tags"], samples["questions"]
     #Encode prompts and groundtruth answers
-    all_prompts = [
+    all_prompts = [[
         create_prompt_sample(
             samples, idx, mode="one_tag_only", 
-            question_prompt=question
-        ) for idx in range(len(tags))
+            question_prompt=questions[b]
+        ) for idx in range(len(tags[b]))
+    ] for b in range(len(tags))]
+    all_labels = [
+        [ labels for idx in range(len(tags[b])) ]
+        for b in range(len(tags))
     ]
-    all_labels = [ labels for idx in range(len(tags)) ]
+    import pdb; pdb.set_trace()
     prompt_encodings = tokenizer(all_prompts, return_tensors="pt", padding=True)
     label_encodings = tokenizer(all_labels, return_tensors="pt", padding=True)
     #Get logits for groundtruth sequence when conditioned on each prompt
@@ -50,18 +54,18 @@ def compute_loss(samples, labels):
     wandb.log({"kl_penalty": kl_penalty})
     return kl_penalty
 
-def train(num_epochs=100, lr=1e-5, batch_size=1):
+def train(num_epochs=100, lr=1e-4, batch_size=8):
     wandb.init(project="lens-training-coco-dataset")
-    question = "What is the image about?"
+    question = ["What is the image about" for i in range(batch_size)]
     ds = load_dataset("RIW/small-coco", split="train")
     sampler = create_sampler(ds, distributed=False)
     dataloader = create_dataloader(ds, sampler, batch_size=batch_size)
     optimizer = torch.optim.Adam(lens_model.parameters(), lr=lr)
-    batch = next(dataloader)
+    batch = next(iter(dataloader))
     torch.autograd.set_detect_anomaly(True)
     for epoch in range(num_epochs):
         optimizer.zero_grad()
-        inputs = processor([batch['image']], [question])
+        inputs = processor(batch['image'], question)
         samples = lens_model(inputs)
         loss = compute_loss(samples, batch['caption'])
         wandb.log({"loss": loss})
