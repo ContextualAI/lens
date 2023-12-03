@@ -84,6 +84,7 @@ def create_prompt_sample(
     samples,
     idx,
     tags_col="tags",
+    tags_idx=0,
     attributes_col="attributes",
     caption_col="caption",
     intensive_captions_col="intensive_captions",
@@ -126,7 +127,7 @@ def create_prompt_sample(
 
     elif mode == "one_tag_only":
         prompt += "Tag: "
-        prompt += samples[tags_col][0][idx]
+        prompt += samples[tags_col][idx][tags_idx]
         prompt += "\nQuestion:"
         prompt += question
         prompt += "\nShort Answer:"
