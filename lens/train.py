@@ -44,38 +44,37 @@ def compute_llm_likelihood(samples, labels):
     label_input_ids = label_encodings["input_ids"].reshape((batch_size, num_tags, seq_length, 1))
     masked_logprobs = logprobs.gather(dim=-1, index=label_input_ids)
     log_likelihood = masked_logprobs.squeeze().sum(dim=-1)
-    return log_likelihood.softmax(dim=-1)
+    return torch.exp(log_likelihood)
 
 def compute_loss(samples, labels):
-    tags_likelihood = samples["top_scores"].squeeze().softmax(dim=-1)
+    tags_likelihood = samples["top_scores"].squeeze()
     llm_likelihood = compute_llm_likelihood(samples, labels)
     kl_penalty = F.kl_div(
-        torch.log(tags_likelihood), llm_likelihood, reduction="batchmean"
+        tags_likelihood.log_softmax(dim=-1), llm_likelihood.log_softmax(dim=-1),
+        reduction="batchmean", log_target=True
     )
     #plt.scatter(tags_likelihood, llm_likelihood)
     wandb.log({"kl_penalty": kl_penalty})
     return kl_penalty
 
-def train(num_epochs=100, lr=1e-5, batch_size=8):
+def train(num_epochs=100, lr=1e-5, batch_size=8, training_size=2000):
     wandb.init(project="lens-training-coco-dataset")
     question = ["What is the image about" for i in range(batch_size)]
-    ds = load_dataset("RIW/small-coco", split="train")
-    sampler = create_sampler(ds, distributed=False)
-    dataloader = create_dataloader(ds, sampler, batch_size=batch_size)
+    ds = load_dataset("RIW/small-coco", split="train", streaming=True)
+    dataloader = create_dataloader(ds, batch_size=batch_size)
     optimizer = torch.optim.Adam(lens_model.parameters(), lr=lr)
-    batch = next(iter(dataloader))
     torch.autograd.set_detect_anomaly(True)
     for epoch in range(num_epochs):
-        optimizer.zero_grad()
-        inputs = processor(batch['image'], question)
-        samples = lens_model(inputs)
-        loss = compute_loss(samples, batch['caption'])
-        wandb.log({"loss": loss})
-        try:
+        for i, batch in enumerate(dataloader):
+            if i > (training_size // batch_size):
+                continue
+            optimizer.zero_grad()
+            inputs = processor(batch['image'], 'question')
+            samples = lens_model(inputs)
+            loss = compute_loss(samples, batch['caption'])
+            wandb.log({"loss": loss})
             loss.backward()
-        except:
-            import pdb; pdb.set_trace()
-        optimizer.step()
+            optimizer.step()
 
 if __name__ == "__main__":
     train()

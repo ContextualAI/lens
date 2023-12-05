@@ -3,7 +3,10 @@ import os
 
 import torch
 from torch.distributed import init_process_group
+import numpy as np
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM
+from PIL import Image
+import requests
 
 default_device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -29,8 +32,15 @@ def create_sampler(dataset, distributed=False):
     return sampler
 
 
-def create_dataloader(dataset, sampler, batch_size=8, num_workers=0):
+def create_dataloader(dataset, batch_size=8, num_workers=0):
     def collate_fn(data):
+        #batch = {'image': [], 'question': [], 'answer': []}
+        #for d in data:
+        #    batch['image'] = Image.open(requests.get(d['image_id'], stream=True).raw).convert('RGB')
+        #    batch['question'] = d['question']
+        #    answer_id = np.argmax(d['label']['weights'])
+        #    batch['answer'] = d['label']['ids'][answer_id]
+        #return batch
         return {
             'image': [d['image'] for d in data],
             'caption': [d['caption'] for d in data]
@@ -40,7 +50,6 @@ def create_dataloader(dataset, sampler, batch_size=8, num_workers=0):
         batch_size=batch_size,
         num_workers=num_workers,
         pin_memory=True,
-        sampler=sampler,
         shuffle=False,
         drop_last=False,
         collate_fn=collate_fn
