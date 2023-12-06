@@ -413,15 +413,15 @@ class LensProcessor:
             clip_image = torch.stack([self.clip_processor(image) for image in images])
         except:
             clip_image = self.clip_processor(images=images, return_tensors="pt")["pixel_values"]
-        # outputs = self.blip_processor(
-        #     images=images, text=["a picture of"] * len(images), return_tensors="pt"
-        # )
-        # blip_image = outputs["pixel_values"]
-        # blip_input_ids = outputs["input_ids"]
+        outputs = self.blip_processor(
+            images=images, text=["a picture of"] * len(images), return_tensors="pt"
+        )
+        blip_image = outputs["pixel_values"]
+        blip_input_ids = outputs["input_ids"]
         return {
             "clip_image": clip_image,
-            # "blip_image": blip_image,
-            # "blip_input_ids": blip_input_ids,
+            "blip_image": blip_image,
+            "blip_input_ids": blip_input_ids,
             "questions": questions,
         }
 
@@ -452,8 +452,8 @@ class LensDataset:
         return {
             "id": torch.tensor(id, dtype=torch.int32),
             "clip_image": outputs["clip_image"].squeeze(0),
-            # "blip_image": outputs["blip_image"].squeeze(0),
-            # "blip_input_ids": outputs["blip_input_ids"].squeeze(0),
+            "blip_image": outputs["blip_image"].squeeze(0),
+            "blip_input_ids": outputs["blip_input_ids"].squeeze(0),
             "questions": outputs["questions"],
         }
 
