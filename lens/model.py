@@ -48,24 +48,24 @@ class Lens(nn.Module):
         if self.clip_name is not None:
             self.clip_model = self.load_clip_model(self.clip_name, self.device)
             # Load weights
-            # huggingface_hub.hf_hub_download(
-            #     repo_id="llm-lens/attributes",
-            #     filename=attributes_weights,
-            #     local_dir=str(Path(Path(__file__).resolve().parent) / "weights"),
-            # )
+            huggingface_hub.hf_hub_download(
+                repo_id="llm-lens/attributes",
+                filename=attributes_weights,
+                local_dir=str(Path(Path(__file__).resolve().parent) / "weights"),
+            )
             huggingface_hub.hf_hub_download(
                 repo_id="llm-lens/tags",
                 filename=tags_weights,
                 local_dir=str(Path(Path(__file__).resolve().parent) / "weights"),
             )
 
-            # self.attributes_weights = torch.load(
-            #     str(
-            #         Path(Path(__file__).resolve().parent)
-            #         / f"weights/{attributes_weights}"
-            #     ),
-            #     map_location=self.device,
-            # ).float()
+            self.attributes_weights = torch.load(
+                str(
+                    Path(Path(__file__).resolve().parent)
+                    / f"weights/{attributes_weights}"
+                ),
+                map_location=self.device,
+            ).float()
             self.tags_weights = torch.load(
                 str(Path(Path(__file__).resolve().parent) / f"weights/{tags_weights}"),
                 map_location=self.device,
@@ -74,11 +74,11 @@ class Lens(nn.Module):
             self.vocab_tags = load_dataset(vocab_tags, split=split_tags)[
                 "prompt_descriptions"
             ]
-            # self.vocab_attributes = flatten(
-            #     load_dataset(vocab_attributes, split=split_attributes)[
-            #         "prompt_descriptions"
-            #     ]
-            # )
+            self.vocab_attributes = flatten(
+                load_dataset(vocab_attributes, split=split_attributes)[
+                    "prompt_descriptions"
+                ]
+            )
 
         # if self.blip_name is not None:
         #     self.blip_model = self.load_caption_model(
@@ -118,7 +118,7 @@ class Lens(nn.Module):
         self,
         samples: dict,
         num_tags: int = 100,
-        num_attributes: int = 5,
+        num_attributes: int = 100,
         contrastive_th: float = 0.2,
         num_beams: int = 5,  # For beam search
         max_length: int = 30,
@@ -136,10 +136,10 @@ class Lens(nn.Module):
             samples = self.forward_tags(
                 samples, num_tags=num_tags, contrastive_th=contrastive_th
             )
-        # if return_attributes:
-        #     samples = self.forward_attributes(
-        #         samples, num_attributes=num_attributes, contrastive_th=contrastive_th
-        #     )
+        if return_attributes:
+            samples = self.forward_attributes(
+                samples, num_attributes=num_attributes, contrastive_th=contrastive_th
+            )
         # if return_global_caption:
         #     samples = self.forward_caption(
         #         samples,
@@ -187,36 +187,37 @@ class Lens(nn.Module):
                 top_k_tags = []
             tags.append(top_k_tags)
         samples[f"tags"] = tags
-        samples[f"top_scores"] = top_scores
+        samples[f"top_scores_tags"] = top_scores
         return samples
 
-    # def forward_attributes(
-    #     self, samples: dict, num_attributes: int = 5, contrastive_th: float = 0.2
-    # ):
-    #     # Get Image Features
-    #     attributes = []
-    #     try:
-    #         image_features = self.clip_model.encode_image(
-    #             samples["clip_image"].to(self.device)
-    #         )
-    #     except:
-    #         image_features = self.clip_model.get_image_features(
-    #             pixel_values=samples["clip_image"]
-    #         )
-    #     image_features_norm = image_features / image_features.norm(dim=-1, keepdim=True)
-    #     text_scores = image_features_norm @ self.attributes_weights
-    #     top_scores, top_indexes = (
-    #         text_scores.float().cpu().topk(k=num_attributes, dim=-1)
-    #     )
-    #     for scores, indexes in zip(top_scores, top_indexes):
-    #         filter_indexes = indexes[scores >= contrastive_th]
-    #         if len(filter_indexes) > 0:
-    #             top_k_tags = [self.vocab_attributes[index] for index in filter_indexes]
-    #         else:
-    #             top_k_tags = []
-    #         attributes.append(top_k_tags)
-    #     samples[f"attributes"] = attributes
-    #     return samples
+    def forward_attributes(
+        self, samples: dict, num_attributes: int = 100, contrastive_th: float = 0.2
+    ):
+        # Get Image Features
+        attributes = []
+        try:
+            image_features = self.clip_model.encode_image(
+                samples["clip_image"].to(self.device)
+            )
+        except:
+            image_features = self.clip_model.get_image_features(
+                pixel_values=samples["clip_image"]
+            )
+        image_features_norm = image_features / image_features.norm(dim=-1, keepdim=True)
+        text_scores = image_features_norm @ self.attributes_weights
+        top_scores, top_indexes = text_scores.float().cpu().topk(
+            k=num_attributes if num_attributes else len(text_scores.squeeze()), dim=-1
+        )
+        for scores, indexes in zip(top_scores, top_indexes):
+            filter_indexes = indexes[scores >= contrastive_th]
+            if len(filter_indexes) > 0:
+                top_k_tags = [self.vocab_attributes[index] for index in filter_indexes]
+            else:
+                top_k_tags = []
+            attributes.append(top_k_tags)
+        samples[f"attributes"] = attributes
+        samples[f"top_scores_attributes"] = top_scores
+        return samples
 
     # def forward_caption(
     #     self,
@@ -349,7 +350,7 @@ class Lens(nn.Module):
                     key
                     for key in batch.keys()
                     if key
-                    in ["id", "tags"]#, "attributes", "caption", "intensive_captions"]
+                    in ["id", "tags", "attributes"]#, "caption", "intensive_captions"]
                 ]
                 # print(f"keys: {keys}")
                 for tuples in zip(*[batch[key] for key in keys]):
@@ -370,7 +371,7 @@ class Lens(nn.Module):
             def add_info(example):
                 for component in [
                     "tags",
-                    # "attributes",
+                    "attributes",
                     # "caption",
                     # "intensive_captions",
                 ]:

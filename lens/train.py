@@ -47,17 +47,20 @@ def compute_llm_likelihood(samples, labels):
     return torch.exp(log_likelihood)
 
 def compute_loss(samples, labels):
-    tags_likelihood = samples["top_scores"].squeeze()
+    loss = 0
     llm_likelihood = compute_llm_likelihood(samples, labels)
-    kl_penalty = F.kl_div(
-        tags_likelihood.log_softmax(dim=-1), llm_likelihood.log_softmax(dim=-1),
-        reduction="batchmean", log_target=True
-    )
+    for desc in ["tags", "attributes"]:
+        desc_likelihood = samples[f"top_scores_{desc}"].squeeze()
+        kl_penalty = F.kl_div(
+            desc_likelihood.log_softmax(dim=-1), llm_likelihood.log_softmax(dim=-1),
+            reduction="batchmean", log_target=True
+        )
+        loss += kl_penalty
+        wandb.log({f"kl_penalty_{desc}": kl_penalty})
     #plt.scatter(tags_likelihood, llm_likelihood)
-    wandb.log({"kl_penalty": kl_penalty})
-    return kl_penalty
+    return loss
 
-def train(num_epochs=100, lr=1e-5, batch_size=8, training_size=2000):
+def train(num_epochs=100, lr=1e-5, batch_size=8, training_size=8):
     wandb.init(project="lens-training-coco-dataset")
     question = ["What is the image about" for i in range(batch_size)]
     ds = load_dataset("RIW/small-coco", split="train", streaming=True)
