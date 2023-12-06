@@ -92,8 +92,8 @@ def get_llm_model(version, load_8bit, device_map=None):
 def create_prompt_sample(
     samples,
     idx,
+    desc_idx=0,
     tags_col="tags",
-    tags_idx=0,
     attributes_col="attributes",
     caption_col="caption",
     intensive_captions_col="intensive_captions",
@@ -134,9 +134,16 @@ def create_prompt_sample(
         prompt += question
         prompt += "\nShort Answer:"
 
-    elif mode == "one_tag_only":
+    elif mode == "tags_only_single":
         prompt += "Tag: "
-        prompt += samples[tags_col][idx][tags_idx]
+        prompt += samples[tags_col][idx][desc_idx]
+        prompt += "\nQuestion:"
+        prompt += question
+        prompt += "\nShort Answer:"
+
+    elif mode == "attributes_only_single":
+        prompt += "Attribute: "
+        prompt += samples[attributes_col][idx][desc_idx]
         prompt += "\nQuestion:"
         prompt += question
         prompt += "\nShort Answer:"

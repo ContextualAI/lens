@@ -18,14 +18,14 @@ processor = LensProcessor()
 tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small", truncation_side='left', padding=True)
 llm_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
 
-def compute_llm_likelihood(samples, labels):
-    batch_size, num_tags = np.array(samples["tags"]).shape
+def compute_llm_likelihood(samples, labels, desc):
+    batch_size, num_descs = np.array(samples[desc]).shape
     #Encode prompts and groundtruth answers
     all_prompts, all_labels = [], []
     for i in range(batch_size):
-        for j in range(num_tags):
+        for j in range(num_descs):
             all_prompts.append(create_prompt_sample(
-                samples, i, tags_idx=j, mode="one_tag_only",
+                samples, i, desc_idx=j, mode=f"{desc}_only_single",
                 question_prompt=samples["questions"][i]
             ))
             all_labels.append(labels[i])
@@ -39,18 +39,18 @@ def compute_llm_likelihood(samples, labels):
     )
     #Compute likelihood based on logits
     _, seq_length, vocab_size = outputs.logits.shape
-    logits = outputs.logits.reshape((batch_size, num_tags, seq_length, vocab_size))
+    logits = outputs.logits.reshape((batch_size, num_descs, seq_length, vocab_size))
     logprobs = logits.log_softmax(dim=-1)
-    label_input_ids = label_encodings["input_ids"].reshape((batch_size, num_tags, seq_length, 1))
+    label_input_ids = label_encodings["input_ids"].reshape((batch_size, num_descs, seq_length, 1))
     masked_logprobs = logprobs.gather(dim=-1, index=label_input_ids)
     log_likelihood = masked_logprobs.squeeze().sum(dim=-1)
     return torch.exp(log_likelihood)
 
 def compute_loss(samples, labels):
     loss = 0
-    llm_likelihood = compute_llm_likelihood(samples, labels)
     for desc in ["tags", "attributes"]:
         desc_likelihood = samples[f"top_scores_{desc}"].squeeze()
+        llm_likelihood = compute_llm_likelihood(samples, labels, desc)
         kl_penalty = F.kl_div(
             desc_likelihood.log_softmax(dim=-1), llm_likelihood.log_softmax(dim=-1),
             reduction="batchmean", log_target=True
