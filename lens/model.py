@@ -80,31 +80,31 @@ class Lens(nn.Module):
                 ]
             )
 
-        # if self.blip_name is not None:
-        #     self.blip_model = self.load_caption_model(
-        #         self.blip_name, load_8bit, self.device
-        #     )
-        #     self.blip_processor = AutoProcessor.from_pretrained(self.blip_name)
+        if self.blip_name is not None:
+            self.blip_model = self.load_caption_model(
+                self.blip_name, load_8bit, self.device
+            )
+            self.blip_processor = AutoProcessor.from_pretrained(self.blip_name)
 
-    # def load_caption_model(
-    #     self, model_name: str, load_8bit: bool, device: torch.device
-    # ):
-    #     if load_8bit:
-    #         model = BlipForConditionalGeneration.from_pretrained(
-    #             model_name,
-    #             torch_dtype=torch.float32 if device == "cpu" else torch.float16,
-    #             device_map={"": device},
-    #             load_in_8bit=True,
-    #         )
-    #     else:
-    #         model = BlipForConditionalGeneration.from_pretrained(
-    #             model_name,
-    #             torch_dtype=torch.float32 if device == "cpu" else torch.float16,
-    #         )
-    #     model = model.eval()
-    #     model = model.to(device)
+    def load_caption_model(
+        self, model_name: str, load_8bit: bool, device: torch.device
+    ):
+        if load_8bit:
+            model = BlipForConditionalGeneration.from_pretrained(
+                model_name,
+                torch_dtype=torch.float32 if device == "cpu" else torch.float16,
+                device_map={"": device},
+                load_in_8bit=True,
+            )
+        else:
+            model = BlipForConditionalGeneration.from_pretrained(
+                model_name,
+                torch_dtype=torch.float32 if device == "cpu" else torch.float16,
+            )
+        model = model.eval()
+        model = model.to(device)
 
-    #     return model
+        return model
 
     def load_clip_model(self, model_name: str, device: torch.device):
         if "openai" in model_name:
@@ -147,14 +147,14 @@ class Lens(nn.Module):
         #         max_length=max_length,
         #         min_length=min_length,
         #     )
-        # if return_intensive_captions:
-        #     samples = self.forward_intensive_caption(
-        #         samples,
-        #         max_length=max_length,
-        #         min_length=min_length,
-        #         top_k=top_k,
-        #         num_captions=num_captions,
-        #     )
+        if return_intensive_captions:
+            samples = self.forward_intensive_caption(
+                samples,
+                max_length=max_length,
+                min_length=min_length,
+                top_k=top_k,
+                num_captions=num_captions,
+            )
 
         if return_complete_prompt:
             samples = self.create_prompt_from_samples(samples, mode="tags_only")
@@ -250,38 +250,39 @@ class Lens(nn.Module):
     #     samples["caption"] = captions_list
     #     return samples
 
-    # def forward_intensive_caption(
-    #     self,
-    #     samples: dict,
-    #     max_length: int = 30,
-    #     min_length: int = 10,
-    #     top_k: int = 50,
-    #     num_captions: int = 10,
-    # ):
-    #     pixel_values = samples["blip_image"].to(self.device, self.blip_model.dtype)
-    #     input_ids = samples["blip_input_ids"].to(self.device)
-    #     caption_ids = self.blip_model.generate(
-    #         pixel_values=pixel_values,
-    #         input_ids=input_ids,
-    #         max_length=max_length,
-    #         min_length=min_length,
-    #         do_sample=True,
-    #         top_p=1,
-    #         top_k=top_k,
-    #         repetition_penalty=1,
-    #         num_return_sequences=num_captions,
-    #     )
+    def forward_intensive_caption(
+        self,
+        samples: dict,
+        max_length: int = 30,
+        min_length: int = 10,
+        top_k: int = 50,
+        num_captions: int = 10,
+    ):
+        pixel_values = samples["blip_image"].to(self.device, self.blip_model.dtype)
+        input_ids = samples["blip_input_ids"].to(self.device)
+        caption_ids = self.blip_model.generate(
+            pixel_values=pixel_values,
+            input_ids=input_ids,
+            max_length=max_length,
+            min_length=min_length,
+            do_sample=True,
+            top_p=1,
+            top_k=top_k,
+            repetition_penalty=1,
+            num_return_sequences=num_captions,
+        )
 
-    #     captions_text = self.blip_processor.batch_decode(
-    #         caption_ids, skip_special_tokens=True
-    #     )
-    #     captions_text = [caption[12:].strip() for caption in captions_text]
-    #     captions_text = [
-    #         captions_text[i : i + num_captions]
-    #         for i in range(0, len(captions_text), num_captions)
-    #     ]
-    #     samples["intensive_captions"] = captions_text
-    #     return samples
+        captions_text = self.blip_processor.batch_decode(
+            caption_ids, skip_special_tokens=True
+        )
+        captions_text = [caption[12:].strip() for caption in captions_text]
+        captions_text = [
+            captions_text[i : i + num_captions]
+            for i in range(0, len(captions_text), num_captions)
+        ]
+        samples["intensive_captions"] = captions_text
+        import pdb; pdb.set_trace()
+        return samples
 
     # This function could be more efficient
     def create_prompt_from_samples(

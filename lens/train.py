@@ -48,7 +48,7 @@ def compute_llm_likelihood(samples, labels, desc):
 
 def compute_loss(samples, labels):
     loss = 0
-    for desc in ["tags", "attributes"]:
+    for desc in ["intensive_captions" "tags", "attributes"]:
         desc_likelihood = samples[f"top_scores_{desc}"].squeeze()
         llm_likelihood = compute_llm_likelihood(samples, labels, desc)
         kl_penalty = F.kl_div(
