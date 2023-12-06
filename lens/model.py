@@ -44,7 +44,7 @@ class Lens(nn.Module):
         # Load Base models
         self.device = device
         self.clip_name = clip_name
-        # self.blip_name = blip_name
+        self.blip_name = blip_name
         if self.clip_name is not None:
             self.clip_model = self.load_clip_model(self.clip_name, self.device)
             # Load weights
@@ -399,7 +399,7 @@ class LensProcessor:
         blip_name: str = "Salesforce/blip-image-captioning-large",
     ):
         self.clip_processor = self.load_clip_transform(clip_name)
-        # self.blip_processor = AutoProcessor.from_pretrained(blip_name)
+        self.blip_processor = AutoProcessor.from_pretrained(blip_name)
 
     def load_clip_transform(self, model_name: str):
         if "openai" in model_name:
