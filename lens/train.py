@@ -18,6 +18,15 @@ processor = LensProcessor()
 tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small", truncation_side='left', padding=True)
 llm_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
 
+def logits_to_probabilities(logits, token_ids):
+    import pdb; pdb.set_trace()
+    batch_size, num_sequences, seq_length, vocab_size = logits.shape
+    logprobs = logits.log_softmax(dim=-1)
+    token_ids = token_ids.reshape((batch_size, num_sequences, seq_length, 1))
+    masked_logprobs = logprobs.gather(dim=-1, index=token_ids)
+    log_likelihood = masked_logprobs.squeeze().sum(dim=-1)
+    return torch.exp(log_likelihood)
+
 def compute_llm_likelihood(samples, labels, desc):
     batch_size, num_descs = np.array(samples[desc]).shape
     #Encode prompts and groundtruth answers
@@ -38,18 +47,21 @@ def compute_llm_likelihood(samples, labels, desc):
         labels=label_encodings["input_ids"]
     )
     #Compute likelihood based on logits
-    _, seq_length, vocab_size = outputs.logits.shape
     logits = outputs.logits.reshape((batch_size, num_descs, seq_length, vocab_size))
-    logprobs = logits.log_softmax(dim=-1)
-    label_input_ids = label_encodings["input_ids"].reshape((batch_size, num_descs, seq_length, 1))
-    masked_logprobs = logprobs.gather(dim=-1, index=label_input_ids)
-    log_likelihood = masked_logprobs.squeeze().sum(dim=-1)
-    return torch.exp(log_likelihood)
+    token_ids = label_encodings["input_ids"].reshape((batch_size, num_descs, seq_length, 1))
+    return logits_to_probabilities(logits, token_ids)
+
+def compute_desc_likelihood(samples, desc):
+    if desc == "intensive_captions":
+        import pdb; pdb.set_trace()
+        logits, sequences = samples[f"{desc}_logits"], samples[f"{desc}_output"].sequences
+        return logits_to_probabilities(logits, sequences)
+    return samples[f"top_scores_{desc}"].squeeze()
 
 def compute_loss(samples, labels):
     loss = 0
-    for desc in ["intensive_captions" "tags", "attributes"]:
-        desc_likelihood = samples[f"top_scores_{desc}"].squeeze()
+    for desc in ["intensive_captions", "tags", "attributes"]:
+        desc_likelihood = compute_desc_likelihood(samples, desc)
         llm_likelihood = compute_llm_likelihood(samples, labels, desc)
         kl_penalty = F.kl_div(
             desc_likelihood.log_softmax(dim=-1), llm_likelihood.log_softmax(dim=-1),
@@ -60,7 +72,7 @@ def compute_loss(samples, labels):
     #plt.scatter(tags_likelihood, llm_likelihood)
     return loss
 
-def train(num_epochs=100, lr=1e-5, batch_size=8, training_size=8):
+def train(num_epochs=100, lr=1e-5, batch_size=2, training_size=2):
     wandb.init(project="lens-training-coco-dataset")
     question = ["What is the image about" for i in range(batch_size)]
     ds = load_dataset("RIW/small-coco", split="train", streaming=True)

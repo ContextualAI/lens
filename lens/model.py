@@ -21,7 +21,6 @@ from utils import (
     default_device,
 )
 
-
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
@@ -117,13 +116,13 @@ class Lens(nn.Module):
     def __call__(
         self,
         samples: dict,
-        num_tags: int = 100,
-        num_attributes: int = 100,
+        num_tags: int = 2,
+        num_attributes: int = 2,
         contrastive_th: float = 0.2,
         num_beams: int = 5,  # For beam search
         max_length: int = 30,
         min_length: int = 10,
-        top_k: int = 50,
+        top_k: int = 2,
         num_captions: int = 10,
         return_tags: bool = True,
         return_attributes: bool = True,
@@ -162,7 +161,7 @@ class Lens(nn.Module):
         return samples
 
     def forward_tags(
-        self, samples: dict, num_tags: int = 100, contrastive_th: float = 0.2
+        self, samples: dict, num_tags: int = 2, contrastive_th: float = 0.2
     ):
         # Get Image Features
         tags = []
@@ -191,7 +190,7 @@ class Lens(nn.Module):
         return samples
 
     def forward_attributes(
-        self, samples: dict, num_attributes: int = 100, contrastive_th: float = 0.2
+        self, samples: dict, num_attributes: int = 2, contrastive_th: float = 0.2
     ):
         # Get Image Features
         attributes = []
@@ -260,7 +259,7 @@ class Lens(nn.Module):
     ):
         pixel_values = samples["blip_image"].to(self.device, self.blip_model.dtype)
         input_ids = samples["blip_input_ids"].to(self.device)
-        caption_ids = self.blip_model.generate(
+        captions_output = self.blip_model.generate(
             pixel_values=pixel_values,
             input_ids=input_ids,
             max_length=max_length,
@@ -270,10 +269,16 @@ class Lens(nn.Module):
             top_k=top_k,
             repetition_penalty=1,
             num_return_sequences=num_captions,
+            output_hidden_states=True,
+            output_scores=True,
+            return_dict_in_generate=True
         )
+        sequences, scores = captions_output.sequences, captions_output.scores
+        import pdb; pdb.set_trace()
+        captions_logits = self.blip_model.compute_transition_scores(sequences, scores)
 
         captions_text = self.blip_processor.batch_decode(
-            caption_ids, skip_special_tokens=True
+            captions_output.sequences, skip_special_tokens=True
         )
         captions_text = [caption[12:].strip() for caption in captions_text]
         captions_text = [
@@ -281,7 +286,8 @@ class Lens(nn.Module):
             for i in range(0, len(captions_text), num_captions)
         ]
         samples["intensive_captions"] = captions_text
-        import pdb; pdb.set_trace()
+        samples["intensive_captions_output"] = captions_output
+        samples["intensive_captions_logits"] = captions_logits
         return samples
 
     # This function could be more efficient
