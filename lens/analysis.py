@@ -42,14 +42,14 @@ def compute_bert_pretrained(ds):
     return scores
 
 def main():
-    ds = [load_dataset("RIW/small-coco", split="validation", streaming=True)]
+    ds = [load_dataset("RIW/small-coco", split="validation")]
     # load_dataset("conceptual_captions", split="train", streaming=True),
     # load_dataset("zzliang/GRIT", split="train", streaming=True)]
     bert_pretrained = []
     bert_trained = []
 
     for i in range(1):
-        bert_pretrained[i] = compute_bert_pretrained(ds[i])
+        bert_pretrained.append(compute_bert_pretrained(ds[i]))
        # bert_trained[i] = compute_bert_trained(ds[i])
 
     print(bert_pretrained)
