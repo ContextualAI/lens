@@ -275,6 +275,7 @@ class Lens(nn.Module):
             output_scores=True,
             return_dict_in_generate=True
         )
+        import pdb; pdb.set_trace()
         sequences, scores = captions_output.sequences, captions_output.scores
         captions_logits = self.blip_model.compute_transition_scores(sequences, scores)
 

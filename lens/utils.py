@@ -148,6 +148,13 @@ def create_prompt_sample(
         prompt += question
         prompt += "\nShort Answer:"
 
+    elif mode == "intensive_captions_only_single":
+        prompt += "Caption: "
+        prompt += samples[intensive_captions_col][idx][desc_idx]
+        prompt += "\nQuestion:"
+        prompt += question
+        prompt += "\nShort Answer:"
+
     elif mode == "hm":
         prompt += "Image:\n"
         prompt += "Caption:"

@@ -19,11 +19,9 @@ tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small", truncation_sid
 llm_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
 
 def logits_to_probabilities(logits, token_ids):
-    import pdb; pdb.set_trace()
     batch_size, num_sequences, seq_length, vocab_size = logits.shape
     logprobs = logits.log_softmax(dim=-1)
-    token_ids = token_ids.reshape((batch_size, num_sequences, seq_length, 1))
-    masked_logprobs = logprobs.gather(dim=-1, index=token_ids)
+    masked_logprobs = logprobs.gather(dim=-1, index=token_ids.unsqueeze(-1))
     log_likelihood = masked_logprobs.squeeze().sum(dim=-1)
     return torch.exp(log_likelihood)
 
@@ -47,20 +45,24 @@ def compute_llm_likelihood(samples, labels, desc):
         labels=label_encodings["input_ids"]
     )
     #Compute likelihood based on logits
+    _, seq_length, vocab_size = outputs.logits.shape
     logits = outputs.logits.reshape((batch_size, num_descs, seq_length, vocab_size))
-    token_ids = label_encodings["input_ids"].reshape((batch_size, num_descs, seq_length, 1))
-    return logits_to_probabilities(logits, token_ids)
+    token_ids = label_encodings["input_ids"].reshape((batch_size, num_descs, seq_length))
+    return logits_to_probabilities(logits, token_ids).to(device)
 
 def compute_desc_likelihood(samples, desc):
     if desc == "intensive_captions":
-        import pdb; pdb.set_trace()
-        logits, sequences = samples[f"{desc}_logits"], samples[f"{desc}_output"].sequences
-        return logits_to_probabilities(logits, sequences)
+        logits = samples[f"{desc}_logits"]
+        batch_size, num_descs = np.array(samples[desc]).shape
+        _, seq_length = logits.shape
+        logits = logits.reshape((batch_size, num_descs, seq_length))
+        log_likelihood = logits.sum(dim=-1)
+        return torch.exp(log_likelihood)
     return samples[f"top_scores_{desc}"].squeeze()
 
 def compute_loss(samples, labels):
     loss = 0
-    for desc in ["intensive_captions", "tags", "attributes"]:
+    for desc in ["intensive_captions"]:#, "tags", "attributes"]:
         desc_likelihood = compute_desc_likelihood(samples, desc)
         llm_likelihood = compute_llm_likelihood(samples, labels, desc)
         kl_penalty = F.kl_div(
@@ -84,7 +86,7 @@ def train(num_epochs=100, lr=1e-5, batch_size=2, training_size=2):
             if i > (training_size // batch_size):
                 continue
             optimizer.zero_grad()
-            inputs = processor(batch['image'], 'question')
+            inputs = processor(batch['image'], question)
             samples = lens_model(inputs)
             loss = compute_loss(samples, batch['caption'])
             wandb.log({"loss": loss})
