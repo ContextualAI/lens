@@ -94,11 +94,13 @@ class Lens(nn.Module):
                 torch_dtype=torch.float32 if device == "cpu" else torch.float16,
                 device_map={"": device},
                 load_in_8bit=True,
+                config="blip_config.json"
             )
         else:
             model = BlipForConditionalGeneration.from_pretrained(
                 model_name,
                 torch_dtype=torch.float32 if device == "cpu" else torch.float16,
+                config="blip_config.json"
             )
         model = model.eval()
         model = model.to(device)
@@ -274,7 +276,6 @@ class Lens(nn.Module):
             return_dict_in_generate=True
         )
         sequences, scores = captions_output.sequences, captions_output.scores
-        import pdb; pdb.set_trace()
         captions_logits = self.blip_model.compute_transition_scores(sequences, scores)
 
         captions_text = self.blip_processor.batch_decode(

@@ -1,0 +1,32 @@
+{
+    "_name_or_path": "Salesforce/blip-image-captioning-large",
+    "architectures": [
+      "BlipForConditionalGeneration"
+    ],
+    "image_text_hidden_size": 256,
+    "initializer_factor": 1.0,
+    "initializer_range": 0.02,
+    "logit_scale_init_value": 2.6592,
+    "model_type": "blip",
+    "projection_dim": 512,
+    "text_config": {
+      "encoder_hidden_size": 1024,
+      "initializer_factor": 1.0,
+      "model_type": "blip_text_model",
+      "num_attention_heads": 12
+    },
+    "torch_dtype": "float32",
+    "transformers_version": "4.35.2",
+    "vision_config": {
+      "dropout": 0.0,
+      "hidden_size": 1024,
+      "initializer_factor": 1.0,
+      "initializer_range": 0.02,
+      "intermediate_size": 4096,
+      "model_type": "blip_vision_model",
+      "num_attention_heads": 16,
+      "num_channels": 3,
+      "num_hidden_layers": 24
+    },
+    "vocab_size": 30522
+  }
