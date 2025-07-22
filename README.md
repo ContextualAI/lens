@@ -81,16 +81,6 @@ output_ds = lens.hf_dataset_transform(ds, processor, return_global_caption = Fal
 ### LENS for image classification
 ![lens_close_ended](https://github.com/ContextualAI/lens/assets/20826878/45f3ae43-e3e4-48fc-b424-1899445d5c6f)
 
-
-## Coming Soon
-
-We are working on bringing the complete LENS experience to you and following scripts will be added soon:
-
-- [ ] Evaluation on VQA and other datasets present in the paper.
-- [ ] Generating vocabularies used in the paper.
-- [ ] Other scripts needed to reproduce the paper.
-
-
 ## Citation
 
 ```
